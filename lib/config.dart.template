@@ -1,4 +1,4 @@
 // lib/config.dart.template
 class Config {
-  static const String googleApiKey = 'AIzaSyCZ12rWhgI-1AiZ1uR2--wzrv_EVm_xO1g';
+  static const String googleApiKey = 'YOUR_API_KEY';
 }
