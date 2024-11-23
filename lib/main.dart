@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'config.dart'; // Import the config file
+import 'config.dart';
 
 void main() => runApp(MyApp());
 
@@ -11,6 +11,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      debugShowCheckedModeBanner: false,
       title: 'CarbonCourier',
       theme: ThemeData(
         primarySwatch: Colors.blue,
@@ -21,6 +22,18 @@ class MyApp extends StatelessWidget {
   }
 }
 
+class LocationInput {
+  final TextEditingController controller;
+  final List<String> suggestions;
+  final bool isSearching;
+
+  LocationInput({
+    required this.controller,
+    this.suggestions = const [],
+    this.isSearching = false,
+  });
+}
+
 class MapSample extends StatefulWidget {
   @override
   State<MapSample> createState() => MapSampleState();
@@ -28,15 +41,14 @@ class MapSample extends StatefulWidget {
 
 class MapSampleState extends State<MapSample> {
   Completer<GoogleMapController> _controller = Completer();
-  TextEditingController _fromController = TextEditingController();
-  TextEditingController _toController = TextEditingController();
+  List<LocationInput> _stopInputs = [];
   Set<Polyline> _polylines = {};
   Set<Marker> _markers = {};
   bool _mapLoaded = false;
+  Timer? _debounceTimer;
 
-  // Initial camera position (Mumbai coordinates)
   static final CameraPosition _initialPosition = CameraPosition(
-    target: LatLng(19.0760, 72.8777), // Mumbai coordinates
+    target: LatLng(19.0760, 72.8777),
     zoom: 11,
   );
 
@@ -44,6 +56,22 @@ class MapSampleState extends State<MapSample> {
   void initState() {
     super.initState();
     _checkGoogleMapsServices();
+    // Initialize with start and end locations
+    _stopInputs.add(LocationInput(
+      controller: TextEditingController(),
+    ));
+    _stopInputs.add(LocationInput(
+      controller: TextEditingController(),
+    ));
+  }
+
+  @override
+  void dispose() {
+    for (var input in _stopInputs) {
+      input.controller.dispose();
+    }
+    _debounceTimer?.cancel();
+    super.dispose();
   }
 
   Future<void> _checkGoogleMapsServices() async {
@@ -55,11 +83,220 @@ class MapSampleState extends State<MapSample> {
     } catch (e) {
       print('Error initializing map: $e');
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-            content:
-                Text('Error loading map. Please check your configuration.')),
+        SnackBar(content: Text('Error loading map. Please check your configuration.')),
       );
     }
+  }
+
+  Future<List<String>> _getPlacePredictions(String input) async {
+    if (input.isEmpty) return [];
+
+    final url = 'https://maps.googleapis.com/maps/api/place/autocomplete/json'
+        '?input=${Uri.encodeComponent(input)}'
+        '&key=${Config.googleApiKey}'
+        '&types=address';
+
+    try {
+      final response = await http.get(Uri.parse(url));
+      final data = json.decode(response.body);
+
+      if (data['status'] == 'OK') {
+        return (data['predictions'] as List)
+            .map((prediction) => prediction['description'] as String)
+            .toList();
+      }
+    } catch (e) {
+      print('Error getting predictions: $e');
+    }
+    return [];
+  }
+
+  void _onLocationInputChanged(int index, String value) {
+    if (_debounceTimer?.isActive ?? false) _debounceTimer!.cancel();
+    _debounceTimer = Timer(Duration(milliseconds: 500), () async {
+      if (value.isEmpty) {
+        setState(() {
+          _stopInputs[index] = LocationInput(
+            controller: _stopInputs[index].controller,
+            suggestions: [],
+          );
+        });
+        return;
+      }
+
+      final predictions = await _getPlacePredictions(value);
+      setState(() {
+        _stopInputs[index] = LocationInput(
+          controller: _stopInputs[index].controller,
+          suggestions: predictions,
+          isSearching: false,
+        );
+      });
+    });
+  }
+
+  Widget _buildLocationInput(int index) {
+    final input = _stopInputs[index];
+    final isFirst = index == 0;
+    final isLast = index == _stopInputs.length - 1;
+
+    return Column(
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Column(
+                children: [
+                  TextField(
+                    controller: input.controller,
+                    decoration: InputDecoration(
+                      labelText: isFirst ? 'From' : isLast ? 'To' : 'Stop ${index}',
+                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.location_on),
+                    ),
+                    onChanged: (value) => _onLocationInputChanged(index, value),
+                  ),
+                  if (input.suggestions.isNotEmpty)
+                    Container(
+                      color: Colors.white,
+                      child: ListView.builder(
+                        shrinkWrap: true,
+                        itemCount: input.suggestions.length,
+                        itemBuilder: (context, i) {
+                          return ListTile(
+                            title: Text(input.suggestions[i]),
+                            onTap: () {
+                              input.controller.text = input.suggestions[i];
+                              setState(() {
+                                _stopInputs[index] = LocationInput(
+                                  controller: input.controller,
+                                  suggestions: [],
+                                );
+                              });
+                            },
+                          );
+                        },
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            if (!isFirst && !isLast)
+              IconButton(
+                icon: Icon(Icons.remove_circle_outline),
+                onPressed: () {
+                  setState(() {
+                    _stopInputs.removeAt(index);
+                  });
+                },
+              ),
+          ],
+        ),
+        SizedBox(height: 10),
+      ],
+    );
+  }
+
+  Future<void> _getRoute() async {
+    // Validate inputs
+    if (_stopInputs.any((input) => input.controller.text.isEmpty)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Please enter all locations')),
+      );
+      return;
+    }
+
+    try {
+      Set<Marker> markers = {};
+      List<LatLng> allPoints = [];
+      
+      // Calculate routes between consecutive stops
+      for (int i = 0; i < _stopInputs.length - 1; i++) {
+        final origin = Uri.encodeComponent(_stopInputs[i].controller.text);
+        final destination = Uri.encodeComponent(_stopInputs[i + 1].controller.text);
+
+        final url = 'https://maps.googleapis.com/maps/api/directions/json'
+            '?origin=$origin'
+            '&destination=$destination'
+            '&key=${Config.googleApiKey}';
+
+        final response = await http.get(Uri.parse(url));
+        final data = json.decode(response.body);
+
+        if (data['status'] == 'OK') {
+          final points = _decodePolyline(data['routes'][0]['overview_polyline']['points']);
+          allPoints.addAll(points);
+
+          // Add markers for each stop
+          final stopLatLng = LatLng(
+            data['routes'][0]['legs'][0]['start_location']['lat'],
+            data['routes'][0]['legs'][0]['start_location']['lng'],
+          );
+
+          markers.add(Marker(
+            markerId: MarkerId('stop_$i'),
+            position: stopLatLng,
+            infoWindow: InfoWindow(title: 'Stop $i'),
+          ));
+
+          // Add final destination marker for last leg
+          if (i == _stopInputs.length - 2) {
+            final endLatLng = LatLng(
+              data['routes'][0]['legs'][0]['end_location']['lat'],
+              data['routes'][0]['legs'][0]['end_location']['lng'],
+            );
+            markers.add(Marker(
+              markerId: MarkerId('destination'),
+              position: endLatLng,
+              infoWindow: InfoWindow(title: 'Destination'),
+            ));
+          }
+        }
+      }
+
+      setState(() {
+        _markers = markers;
+        _polylines = {
+          Polyline(
+            polylineId: PolylineId('route'),
+            points: allPoints,
+            color: Colors.green,
+            width: 5,
+          ),
+        };
+      });
+
+      // Fit bounds to show all points
+      if (allPoints.isNotEmpty) {
+        final bounds = _getBounds(allPoints);
+        final GoogleMapController controller = await _controller.future;
+        controller.animateCamera(CameraUpdate.newLatLngBounds(bounds, 50));
+      }
+    } catch (e) {
+      print('Error getting route: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error getting route: $e')),
+      );
+    }
+  }
+
+  LatLngBounds _getBounds(List<LatLng> points) {
+    double minLat = points.first.latitude;
+    double maxLat = points.first.latitude;
+    double minLng = points.first.longitude;
+    double maxLng = points.first.longitude;
+
+    for (var point in points) {
+      if (point.latitude < minLat) minLat = point.latitude;
+      if (point.latitude > maxLat) maxLat = point.latitude;
+      if (point.longitude < minLng) minLng = point.longitude;
+      if (point.longitude > maxLng) maxLng = point.longitude;
+    }
+
+    return LatLngBounds(
+      southwest: LatLng(minLat, minLng),
+      northeast: LatLng(maxLat, maxLng),
+    );
   }
 
   @override
@@ -67,46 +304,54 @@ class MapSampleState extends State<MapSample> {
     return Scaffold(
       appBar: AppBar(
         title: Text('CarbonCourier-route'),
-        backgroundColor: Colors.green, // Theme color for CarbonCourier
+        backgroundColor: Colors.green,
       ),
       body: Column(
         children: [
-          Padding(
-            padding: EdgeInsets.all(16.0),
-            child: Column(
-              children: [
-                TextField(
-                  controller: _fromController,
-                  decoration: InputDecoration(
-                    labelText: 'From',
-                    border: OutlineInputBorder(),
-                    prefixIcon: Icon(Icons.location_on),
+          Expanded(
+            flex: _stopInputs.length > 2 ? 2 : 1,
+            child: SingleChildScrollView(
+              padding: EdgeInsets.all(16.0),
+              child: Column(
+                children: [
+                  ..._stopInputs.asMap().entries.map((entry) {
+                    return _buildLocationInput(entry.key);
+                  }).toList(),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      if (_stopInputs.length < 10)
+                        ElevatedButton.icon(
+                          onPressed: () {
+                            setState(() {
+                              _stopInputs.insert(_stopInputs.length - 1,
+                                LocationInput(controller: TextEditingController())
+                              );
+                            });
+                          },
+                          icon: Icon(Icons.add),
+                          label: Text('Add Stop'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.blue,
+                          ),
+                        ),
+                      ElevatedButton.icon(
+                        onPressed: _getRoute,
+                        icon: Icon(Icons.directions),
+                        label: Text('Show Route'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.green,
+                          padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                        ),
+                      ),
+                    ],
                   ),
-                ),
-                SizedBox(height: 10),
-                TextField(
-                  controller: _toController,
-                  decoration: InputDecoration(
-                    labelText: 'To',
-                    border: OutlineInputBorder(),
-                    prefixIcon: Icon(Icons.location_on),
-                  ),
-                ),
-                SizedBox(height: 10),
-                ElevatedButton.icon(
-                  onPressed: _getRoute,
-                  icon: Icon(Icons.directions),
-                  label: Text('Show Route'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.green,
-                    //primary: Colors.green,
-                    padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                  ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
           Expanded(
+            flex: 2,
             child: Stack(
               children: [
                 GoogleMap(
@@ -132,90 +377,6 @@ class MapSampleState extends State<MapSample> {
         ],
       ),
     );
-  }
-
-  Future<void> _getRoute() async {
-    if (_fromController.text.isEmpty || _toController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Please enter both locations')),
-      );
-      return;
-    }
-
-    final from = Uri.encodeComponent(_fromController.text);
-    final to = Uri.encodeComponent(_toController.text);
-
-    final url =
-        'https://maps.googleapis.com/maps/api/directions/json?origin=$from&destination=$to&key=${Config.googleApiKey}';
-
-    try {
-      final response = await http.get(Uri.parse(url));
-      print('API Response: ${response.body}'); // Debug print
-
-      final data = json.decode(response.body);
-
-      if (data['status'] == 'OK') {
-        final points =
-            _decodePolyline(data['routes'][0]['overview_polyline']['points']);
-
-        final startLatLng = LatLng(
-          data['routes'][0]['legs'][0]['start_location']['lat'],
-          data['routes'][0]['legs'][0]['start_location']['lng'],
-        );
-
-        final endLatLng = LatLng(
-          data['routes'][0]['legs'][0]['end_location']['lat'],
-          data['routes'][0]['legs'][0]['end_location']['lng'],
-        );
-
-        setState(() {
-          _markers = {
-            Marker(
-              markerId: MarkerId('start'),
-              position: startLatLng,
-              infoWindow: InfoWindow(title: 'Start'),
-            ),
-            Marker(
-              markerId: MarkerId('end'),
-              position: endLatLng,
-              infoWindow: InfoWindow(title: 'End'),
-            ),
-          };
-
-          _polylines = {
-            Polyline(
-              polylineId: PolylineId('route'),
-              points: points,
-              color: Colors.green,
-              width: 5,
-            ),
-          };
-        });
-
-        final bounds = LatLngBounds(
-          southwest: LatLng(
-            data['routes'][0]['bounds']['southwest']['lat'],
-            data['routes'][0]['bounds']['southwest']['lng'],
-          ),
-          northeast: LatLng(
-            data['routes'][0]['bounds']['northeast']['lat'],
-            data['routes'][0]['bounds']['northeast']['lng'],
-          ),
-        );
-
-        final GoogleMapController controller = await _controller.future;
-        controller.animateCamera(CameraUpdate.newLatLngBounds(bounds, 50));
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Could not find route: ${data['status']}')),
-        );
-      }
-    } catch (e) {
-      print('Error getting route: $e'); // Debug print
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error getting route: $e')),
-      );
-    }
   }
 
   List<LatLng> _decodePolyline(String encoded) {
