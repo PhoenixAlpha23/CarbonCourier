@@ -1,6 +1,3 @@
-// Suggested code may be subject to a license. Learn more: ~LicenseLog:2567207245.
-// Suggested code may be subject to a license. Learn more: ~LicenseLog:3242044973.
-// Suggested code may be subject to a license. Learn more: ~LicenseLog:2387422124.
 import 'package:flutter/material.dart';
 import 'dart:math';
 
