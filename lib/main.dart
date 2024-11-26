@@ -14,8 +14,27 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: 'CarbonCourier',
       theme: ThemeData(
-        primarySwatch: Colors.blue,
-        visualDensity: VisualDensity.adaptivePlatformDensity,
+        primaryColor: Color(0xFF4CAF50), // Green color from Figma
+        hintColor: Colors.white, // White color from Figma
+        elevatedButtonTheme: ElevatedButtonThemeData(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Color(0xFF4CAF50), // Green color from Figma
+            textStyle: TextStyle(color: Colors.white),
+            shape: RoundedRectangleBorder(
+              borderRadius:
+                  BorderRadius.circular(8.0), // Rounded corners from Figma
+            ),
+          ),
+        ),
+        textTheme: const TextTheme(
+          titleLarge: TextStyle(
+            fontSize: 18.0, // Font size from Figma
+            fontWeight: FontWeight.bold, // Font weight from Figma
+          ),
+          bodyMedium: TextStyle(
+            fontSize: 16.0, // Font size from Figma
+          ),
+        ),
       ),
       home: MapSample(),
     );
@@ -83,7 +102,9 @@ class MapSampleState extends State<MapSample> {
     } catch (e) {
       print('Error initializing map: $e');
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error loading map. Please check your configuration.')),
+        SnackBar(
+            content:
+                Text('Error loading map. Please check your configuration.')),
       );
     }
   }
@@ -150,7 +171,11 @@ class MapSampleState extends State<MapSample> {
                   TextField(
                     controller: input.controller,
                     decoration: InputDecoration(
-                      labelText: isFirst ? 'From' : isLast ? 'To' : 'Stop ${index}',
+                      labelText: isFirst
+                          ? 'From'
+                          : isLast
+                              ? 'To'
+                              : 'Stop ${index}',
                       border: OutlineInputBorder(),
                       prefixIcon: Icon(Icons.location_on),
                     ),
@@ -209,11 +234,12 @@ class MapSampleState extends State<MapSample> {
     try {
       Set<Marker> markers = {};
       List<LatLng> allPoints = [];
-      
+
       // Calculate routes between consecutive stops
       for (int i = 0; i < _stopInputs.length - 1; i++) {
         final origin = Uri.encodeComponent(_stopInputs[i].controller.text);
-        final destination = Uri.encodeComponent(_stopInputs[i + 1].controller.text);
+        final destination =
+            Uri.encodeComponent(_stopInputs[i + 1].controller.text);
 
         final url = 'https://maps.googleapis.com/maps/api/directions/json'
             '?origin=$origin'
@@ -224,7 +250,8 @@ class MapSampleState extends State<MapSample> {
         final data = json.decode(response.body);
 
         if (data['status'] == 'OK') {
-          final points = _decodePolyline(data['routes'][0]['overview_polyline']['points']);
+          final points =
+              _decodePolyline(data['routes'][0]['overview_polyline']['points']);
           allPoints.addAll(points);
 
           // Add markers for each stop
@@ -303,55 +330,24 @@ class MapSampleState extends State<MapSample> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('CarbonCourier-route'),
-        backgroundColor: Colors.green,
+        title: Text('Carbon Route'),
+        backgroundColor: Color(0xFF4CAF50),
+        actions: [
+          Padding(
+            padding: EdgeInsets.only(right: 16.0),
+            child: IconButton(
+              icon: Icon(Icons.person),
+              onPressed: () {
+                // Handle profile button press
+              },
+            ),
+          ),
+        ],
       ),
       body: Column(
         children: [
           Expanded(
             flex: _stopInputs.length > 2 ? 2 : 1,
-            child: SingleChildScrollView(
-              padding: EdgeInsets.all(16.0),
-              child: Column(
-                children: [
-                  ..._stopInputs.asMap().entries.map((entry) {
-                    return _buildLocationInput(entry.key);
-                  }).toList(),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      if (_stopInputs.length < 10)
-                        ElevatedButton.icon(
-                          onPressed: () {
-                            setState(() {
-                              _stopInputs.insert(_stopInputs.length - 1,
-                                LocationInput(controller: TextEditingController())
-                              );
-                            });
-                          },
-                          icon: Icon(Icons.add),
-                          label: Text('Add Stop'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.blue,
-                          ),
-                        ),
-                      ElevatedButton.icon(
-                        onPressed: _getRoute,
-                        icon: Icon(Icons.directions),
-                        label: Text('Show Route'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.green,
-                          padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-          Expanded(
-            flex: 2,
             child: Stack(
               children: [
                 GoogleMap(
@@ -372,6 +368,67 @@ class MapSampleState extends State<MapSample> {
                     child: CircularProgressIndicator(),
                   ),
               ],
+            ),
+          ),
+          Expanded(
+            flex: 1,
+            child: Container(
+              color:
+                  Color(0xFFF0F0F0), // Light grey background color from Figma
+              padding: EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  ..._stopInputs.asMap().entries.map((entry) {
+                    return _buildLocationInput(entry.key);
+                  }).toList(),
+                  SizedBox(height: 16.0),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      if (_stopInputs.length < 10)
+                        ElevatedButton.icon(
+                          onPressed: () {
+                            setState(() {
+                              _stopInputs.insert(
+                                  _stopInputs.length - 1,
+                                  LocationInput(
+                                      controller: TextEditingController()));
+                            });
+                          },
+                          icon: Icon(Icons.add),
+                          label: Text('Add Stop'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(
+                                0xFF4CAF50), // Green color from Figma
+                            textStyle: TextStyle(
+                                color: Colors.white), // White text color.
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(
+                                  8.0), // Rounded corners from Figma
+                            ),
+                          ),
+                        ),
+                      ElevatedButton.icon(
+                        onPressed: _getRoute,
+                        icon: Icon(Icons.directions),
+                        label: Text('Show Route'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor:
+                              Color(0xFF4CAF50), // Green color from Figma
+                          textStyle: TextStyle(color: Colors.white),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 20, vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(
+                                8.0), // Rounded corners from Figma
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
         ],
