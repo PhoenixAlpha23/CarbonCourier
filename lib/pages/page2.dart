@@ -23,20 +23,34 @@ class _StatsPageState extends State<StatsPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Stats'),
+        backgroundColor: Theme.of(context).primaryColor,
       ),
-      body: Center(
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            Text('Total Carbon Emissions: $totalCarbonEmissions kg'),
-            Text('Distance Travelled: $distanceTravelled km'),
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
             Text(
-                'Next Recommended Service Date: ${nextServiceDate.toString().substring(0, 10)}'), // Display date only
-            SizedBox(height: 20),
-            //Speedometer
-            CustomPaint(
-              size: const Size(200, 200),
-              painter: SpeedometerPainter(dailyEmissions),
+              'Total Carbon Emissions: $totalCarbonEmissions kg',
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
+            SizedBox(height: 8.0),
+            Text(
+              'Distance Travelled: $distanceTravelled km',
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+            SizedBox(height: 8.0),
+            Text(
+              'Next Recommended Service Date: ${nextServiceDate.toString().substring(0, 10)}',
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+            SizedBox(height: 20.0),
+            Center(
+              child: CustomPaint(
+                size: const Size(200, 200),
+                painter: SpeedometerPainter(dailyEmissions),
+              ),
             ),
           ],
         ),
