@@ -2,8 +2,7 @@
 
 A new Flutter project, featuring the route page.
 
-This route page uses Google Maps API key to retrieve the location data , using which we calculate the distance between multiple stops and the /n
-resulting Carbon Emission rate.
+This route page uses Google Maps API key to retrieve the location data , using which we calculate the distance between multiple stops and the resulting Carbon Emission rate.
 ## Getting Started
 
 This project is a starting point for a Flutter application.
