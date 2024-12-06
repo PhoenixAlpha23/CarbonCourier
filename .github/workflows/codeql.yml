@@ -44,7 +44,23 @@ jobs:
       matrix:
         include:
         - language: java-kotlin
-          build-mode: autobuild
+          build-mode: manual
+        # Add a step that uses the build command you provided
+        - name: Build Flutter Android project
+        run: |
+         cd /home/user/myapp/android
+         ./gradlew \
+         --parallel \
+         -Pverbose=true \
+         -Ptarget-platform=android-x86 \
+         -Ptarget=/home/user/myapp/lib/main.dart \
+         -Pbase-application-name=android.app.Application \
+         -Pdart-defines=RkxVVFRFUl9XRUJfQ0FOVkFTS0lUX1VSTD1odHRwczovL3d3dy5nc3RhdGljLmNvbS9mbHV0dGVyLWNhbnZhc2tpdC85NzU1MDkwN2I3MGY0ZjNiMzI4YjZjMTYwMGRmMjFmYWMxYTE4ODlhLw== \
+         -Pdart-obfuscation=false \
+         -Ptrack-widget-creation=true \
+         -Ptree-shake-icons=false \
+         -Pfilesystem-scheme=org-dartlang-root \
+         assembleDebug
         # CodeQL supports the following values keywords for 'language': 'c-cpp', 'csharp', 'go', 'java-kotlin', 'javascript-typescript', 'python', 'ruby', 'swift'
         # Use `c-cpp` to analyze code written in C, C++ or both
         # Use 'java-kotlin' to analyze code written in Java, Kotlin or both
