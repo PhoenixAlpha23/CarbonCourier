@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:http/http.dart' as http;
+import 'package:myapp/pages/page2.dart';
 import 'dart:convert';
 import 'config.dart';
 
@@ -14,11 +15,11 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: 'CarbonCourier',
       theme: ThemeData(
-        primaryColor: Color(0xFF4CAF50), // Green color from Figma
+        primaryColor: const Color(0xFF4CAF50), // Green color from Figma
         hintColor: Colors.white, // White color from Figma
         elevatedButtonTheme: ElevatedButtonThemeData(
           style: ElevatedButton.styleFrom(
-            backgroundColor: Color(0xFF4CAF50), // Green color from Figma
+            backgroundColor: const Color(0xFF4CAF50), // Green color from Figma
             textStyle: TextStyle(color: Colors.white),
             shape: RoundedRectangleBorder(
               borderRadius:
@@ -211,6 +212,10 @@ class MapSampleState extends State<MapSample> {
               IconButton(
                 icon: Icon(Icons.remove_circle_outline),
                 onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => StatsPage()), 
+  );
                   setState(() {
                     _stopInputs.removeAt(index);
                   });
