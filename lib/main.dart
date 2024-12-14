@@ -95,6 +95,7 @@ class MapSampleState extends State<MapSample> {
 
   Future<void> _checkGoogleMapsServices() async {
     try {
+      // ignore: unused_local_variable
       final GoogleMapController controller = await _controller.future;
       setState(() {
         _mapLoaded = true;
