@@ -46,7 +46,7 @@ class StatsPage extends StatelessWidget {
       axes: <RadialAxis>[
         RadialAxis(
           minimum: 0,
-          maximum: 500, // Example max value
+          maximum: 500, // Example max 
           ranges: [
             GaugeRange(startValue: 0, endValue: 150, color: Colors.green),
             GaugeRange(startValue: 150, endValue: 300, color: Colors.yellow),
