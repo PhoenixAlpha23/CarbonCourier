@@ -214,8 +214,8 @@ class MapSampleState extends State<MapSample> {
                 onPressed: () {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (context) => StatsPage()), 
-  );
+                    MaterialPageRoute(builder: (context) => StatsPage()),
+                  );
                   setState(() {
                     _stopInputs.removeAt(index);
                   });
@@ -336,7 +336,7 @@ class MapSampleState extends State<MapSample> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Carbon Route'),
+        title: Text('Carbon Courier route'),
         backgroundColor: Color(0xFF4CAF50),
         actions: [
           Padding(
