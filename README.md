@@ -50,8 +50,8 @@ Follow these steps to set up the project locally:
 ### Steps
 1. Clone this repository:
    ```bash
-   git clone <repository-link>
-   cd <project-folder>
+   git clone <https://github.com/PhoenixAlpha23/CarbonCourier/tree/main>
+   cd <lib>
    ```
 
 2. Install dependencies:
