@@ -7,11 +7,11 @@ class StatsPage extends StatelessWidget {
   final double carbonRank; // Rank between 0.0 and 5.0
 
   const StatsPage({
-    Key? key,
+    super.key,
     required this.totalDistance,
     required this.totalEmissions,
     required this.carbonRank,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
