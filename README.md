@@ -3,6 +3,8 @@
 This is a Flutter application that calculates carbon emissions based on cargo weight and travel distance using the Google Maps API. The app integrates with Supabase for user management and authentication.
 
 I have used google's Project IDX to create this flutter application. you can learn more about that [here.](https://idx.google.com/)
+The environment set up details can be found in the "idx" folder.
+
 ## Table of Contents
 1. [Overview](#overview)
 2. [Features](#features)
